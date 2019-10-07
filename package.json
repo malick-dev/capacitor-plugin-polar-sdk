@@ -1,0 +1,49 @@
+{
+  "name": "capacitor-plugin-polar",
+  "version": "0.0.1",
+  "description": "HNL Capacitor plugin Polar",
+  "main": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "scripts": {
+    "build": "npm run clean && tsc",
+    "clean": "rm -rf ./dist",
+    "watch": "tsc --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "author": "NOC",
+  "license": "MIT",
+  "dependencies": {
+    "@capacitor/core": "latest"
+  },
+  "devDependencies": {
+    "typescript": "^3.2.4",
+    "@capacitor/ios": "latest",
+    "@capacitor/android": "latest"
+  },
+  "files": [
+    "dist/",
+    "ios/",
+    "android/",
+    "CapacitorPluginPolar.podspec"
+  ],
+  "keywords": [
+    "capacitor",
+    "plugin",
+    "native"
+  ],
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    },
+    "android": {
+      "src": "android"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@gitlab.com:heartneverlies/lena/teckpkg/capacitor-plugin-polar.git"
+  },
+  "bugs": {
+    "url": "git@gitlab.com:heartneverlies/lena/teckpkg/capacitor-plugin-polar.git/issues"
+  }
+}
