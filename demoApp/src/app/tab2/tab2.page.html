@@ -1,9 +1,33 @@
 <ion-header>
-  <ion-toolbar>
-    <ion-title>
-      Tab Two
-    </ion-title>
-  </ion-toolbar>
+    <ion-toolbar>
+        <ion-title>
+            Tab Two
+        </ion-title>
+    </ion-toolbar>
 </ion-header>
 
-<ion-content></ion-content>
+<ion-content class="ion-padding">
+
+    <section>
+        <header>Default plugins method</header>
+        <ion-button (click)="show()" color="medium" size="large">
+            show
+        </ion-button>
+    </section>
+
+    <section>
+        <header>Polar plugin custom method</header>
+        <ion-button (click)="connect()" expand="block">
+            connect
+        </ion-button>
+    </section>
+
+    <div>
+        <label>DeviceID:
+            <input [(ngModel)]="deviceId" placeholder="device ID"/>
+        </label>
+    </div>
+
+    <h2>{{deviceId| uppercase}}</h2>
+
+</ion-content>
