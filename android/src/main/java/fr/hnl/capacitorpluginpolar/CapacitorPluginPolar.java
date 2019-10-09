@@ -16,10 +16,17 @@ import io.reactivex.disposables.Disposable;
 import polar.com.sdk.api.PolarBleApi;
 import polar.com.sdk.api.PolarBleApiCallback;
 import polar.com.sdk.api.PolarBleApiDefaultImpl;
+import polar.com.sdk.api.errors.PolarInvalidArgument;
 import polar.com.sdk.api.model.PolarDeviceInfo;
 import polar.com.sdk.api.model.PolarHrData;
 
-@NativePlugin()
+@NativePlugin(
+        permissions={
+                Manifest.permission.BLUETOOTH,
+                Manifest.permission.BLUETOOTH_ADMIN,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+        }
+)
 public class CapacitorPluginPolar extends Plugin {
 
     private final static String TAG = CapacitorPluginPolar.class.getSimpleName() + "HNL Polar ->";
@@ -30,6 +37,9 @@ public class CapacitorPluginPolar extends Plugin {
     Disposable ppgDisposable;
     Disposable ppiDisposable;
 
+    /**
+     * Polar device's id
+     */
     private String DEVICE_ID;
 
     @PluginMethod()
@@ -45,8 +55,11 @@ public class CapacitorPluginPolar extends Plugin {
     public void connect(PluginCall call) {
         DEVICE_ID = call.getString("deviceId");
 
+        Log.d(TAG, "DEVICE_ID: " + DEVICE_ID);
+
         Context ctx = this.getActivity().getApplicationContext();
 
+        // Load the default api implementation and add callback.
         try {
 
             // Notice PolarBleApi.ALL_FEATURES are enabled
@@ -69,28 +82,50 @@ public class CapacitorPluginPolar extends Plugin {
             call.reject(e.getLocalizedMessage(), e);
         }
 
+        /* CONNECT */
+        try {
+            api.connectToDevice(DEVICE_ID);
+        } catch (PolarInvalidArgument a){
+            a.printStackTrace();
+            call.reject(a.getLocalizedMessage(), a);
+        }
+
         JSObject ret = new JSObject();
         ret.put("value", DEVICE_ID);
         call.success(ret);
     }
+
 
     private void setPolarApiCallBack() {
         api.setApiCallback(new PolarBleApiCallback() {
             @Override
             public void blePowerStateChanged(boolean powered) {
                 Log.d(TAG, "BLE power: " + powered);
+
+                JSObject ret = new JSObject();
+                ret.put("value", powered);
+                notifyListeners("blePowerStateChangedEvent", ret);
             }
 
             @Override
             public void deviceConnected(PolarDeviceInfo polarDeviceInfo) {
                 Log.d(TAG, "CONNECTED: " + polarDeviceInfo.deviceId);
                 DEVICE_ID = polarDeviceInfo.deviceId;
+
+                JSObject ret = new JSObject();
+                ret.put("value", "CONNECTED");
+                notifyListeners("deviceConnectionStateEvent", ret);
             }
 
             @Override
             public void deviceConnecting(PolarDeviceInfo polarDeviceInfo) {
                 Log.d(TAG, "CONNECTING: " + polarDeviceInfo.deviceId);
                 DEVICE_ID = polarDeviceInfo.deviceId;
+
+                JSObject ret = new JSObject();
+                ret.put("value", "CONNECTING");
+                notifyListeners("deviceConnectionStatusEvent", ret);
+
             }
 
             @Override
@@ -100,6 +135,11 @@ public class CapacitorPluginPolar extends Plugin {
                 accDisposable = null;
                 ppgDisposable = null;
                 ppiDisposable = null;
+
+                JSObject ret = new JSObject();
+                ret.put("value", "DISCONNECTED");
+                notifyListeners("deviceConnectionStatusEvent", ret);
+
             }
 
             @Override
@@ -153,6 +193,12 @@ public class CapacitorPluginPolar extends Plugin {
             @Override
             public void hrNotificationReceived(String identifier, PolarHrData data) {
                 Log.d(TAG, "HR value: " + data.hr + " rrsMs: " + data.rrsMs + " rr: " + data.rrs + " contact: " + data.contactStatus + "," + data.contactStatusSupported);
+
+                JSObject ret = new JSObject();
+                ret.put("hr", data.hr);
+                ret.put("contactStatus", data.contactStatus);
+                ret.put("contactStatusSupported", data.contactStatusSupported);
+                notifyListeners("hrNotificationReceived", ret);
             }
 
             @Override

@@ -3,11 +3,19 @@
 
 ## Test with demo app
 
-cd demoApp
+cd [pluginDir]
+
+npm install
+
+cd [pluginDir]/demoApp
+
+npm install
 
 ionic build
 
 npx cap open android
+
+* after each modif on demo or plugin source code, re-execute 
 
 npx cap sync android
 

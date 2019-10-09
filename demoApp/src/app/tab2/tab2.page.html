@@ -1,7 +1,7 @@
 <ion-header>
     <ion-toolbar>
         <ion-title>
-            Tab Two
+            Polar Demo
         </ion-title>
     </ion-toolbar>
 </ion-header>
@@ -22,12 +22,59 @@
         </ion-button>
     </section>
 
-    <div>
-        <label>DeviceID:
-            <input [(ngModel)]="deviceId" placeholder="device ID"/>
-        </label>
-    </div>
+    <!--    <div>-->
+    <!--        <label>DeviceID:-->
+    <!--            <input [(ngModel)]="deviceId" placeholder="device ID"/>-->
+    <!--        </label>-->
+    <!--    </div>-->
 
-    <h2>{{deviceId| uppercase}}</h2>
+    <section>
+        <ion-list>
+
+            <ion-item>
+                <ion-label>Device ID</ion-label>
+                <ion-badge slot="end">{{deviceId}}</ion-badge>
+            </ion-item>
+
+            <ion-item>
+                <ion-label>Name</ion-label>
+                <ion-badge color="secondary" slot="end">{{deviceConnectionState}}</ion-badge>
+            </ion-item>
+
+            <ion-item>
+                <ion-icon name="bluetooth"></ion-icon>
+                <ion-label>BLE Power State</ion-label>
+                <ion-badge slot="end">{{ powerState }}</ion-badge>
+            </ion-item>
+
+            <ion-item>
+                <ion-icon name="pin"></ion-icon>
+                <ion-label>Connection State</ion-label>
+                <ion-badge color="secondary" slot="end">{{deviceConnectionState}}</ion-badge>
+            </ion-item>
+
+            <ion-item>
+                <ion-label>PPI</ion-label>
+                <ion-badge slot="end">{{ppi}}</ion-badge>
+            </ion-item>
+
+            <ion-item>
+                <ion-icon name="heart"></ion-icon>
+                <ion-label>HR</ion-label>
+                <ion-badge color="secondary" slot="end">{{hr}}</ion-badge>
+            </ion-item>
+
+            <ion-item>
+                <ion-label>contactStatusSupported</ion-label>
+                <ion-badge color="secondary" slot="end">{{contactStatusSupported}}</ion-badge>
+            </ion-item>
+
+            <ion-item>
+                <ion-label>contactStatus</ion-label>
+                <ion-badge color="secondary" slot="end">{{ contactStatus }}</ion-badge>
+            </ion-item>
+
+        </ion-list>
+    </section>
 
 </ion-content>

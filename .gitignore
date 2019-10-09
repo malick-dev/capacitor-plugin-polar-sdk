@@ -5,3 +5,7 @@ dist
 *.tgz
 
 /android/build
+
+/android/local.properties
+/android/android.iml
+/android/capacitor-plugin-polar.iml
