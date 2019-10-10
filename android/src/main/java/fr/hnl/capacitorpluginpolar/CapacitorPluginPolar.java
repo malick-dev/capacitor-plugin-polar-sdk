@@ -9,19 +9,28 @@ import com.getcapacitor.NativePlugin;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
+import com.google.gson.Gson;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.UUID;
 
+import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Action;
+import io.reactivex.functions.Consumer;
 import polar.com.sdk.api.PolarBleApi;
 import polar.com.sdk.api.PolarBleApiCallback;
 import polar.com.sdk.api.PolarBleApiDefaultImpl;
 import polar.com.sdk.api.errors.PolarInvalidArgument;
 import polar.com.sdk.api.model.PolarDeviceInfo;
 import polar.com.sdk.api.model.PolarHrData;
+import polar.com.sdk.api.model.PolarOhrPPIData;
 
 @NativePlugin(
-        permissions={
+        permissions = {
                 Manifest.permission.BLUETOOTH,
                 Manifest.permission.BLUETOOTH_ADMIN,
                 Manifest.permission.ACCESS_COARSE_LOCATION
@@ -85,7 +94,7 @@ public class CapacitorPluginPolar extends Plugin {
         /* CONNECT */
         try {
             api.connectToDevice(DEVICE_ID);
-        } catch (PolarInvalidArgument a){
+        } catch (PolarInvalidArgument a) {
             a.printStackTrace();
             call.reject(a.getLocalizedMessage(), a);
         }
@@ -164,6 +173,7 @@ public class CapacitorPluginPolar extends Plugin {
             public void ppiFeatureReady(String identifier) {
                 Log.d(TAG, "PPI READY: " + identifier);
                 // ohr ppi can be started
+                startOhrPPIStreaming();
             }
 
             @Override
@@ -194,11 +204,30 @@ public class CapacitorPluginPolar extends Plugin {
             public void hrNotificationReceived(String identifier, PolarHrData data) {
                 Log.d(TAG, "HR value: " + data.hr + " rrsMs: " + data.rrsMs + " rr: " + data.rrs + " contact: " + data.contactStatus + "," + data.contactStatusSupported);
 
-                JSObject ret = new JSObject();
-                ret.put("hr", data.hr);
-                ret.put("contactStatus", data.contactStatus);
-                ret.put("contactStatusSupported", data.contactStatusSupported);
-                notifyListeners("hrNotificationReceived", ret);
+                // Java Objects to JSON
+                Gson gson = new Gson();
+
+                String jsonStr = gson.toJson(data);
+                Log.e(TAG, "retJSONString = " + jsonStr);
+
+                JSONObject jsonObject = null;
+                try {
+                    jsonObject = new JSONObject(jsonStr);
+
+                    Log.e(TAG, "retTmp = " + jsonObject.toString());
+
+                    JSObject ret = JSObject.fromJSONObject(jsonObject);
+                    Log.e(TAG, "ret = " + ret.toString());
+
+//                JSObject ret = new JSObject();
+//                ret.put("hr", data.hr);
+//                ret.put("contactStatus", data.contactStatus);
+//                ret.put("contactStatusSupported", data.contactStatusSupported);
+                    notifyListeners("hrNotificationReceived", ret);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                    Log.d(TAG, "JSONException =" + e.getLocalizedMessage());
+                }
             }
 
             @Override
@@ -206,6 +235,62 @@ public class CapacitorPluginPolar extends Plugin {
                 Log.d(TAG, "FTP ready");
             }
         });
+    }
+
+    private void startOhrPPIStreaming() {
+        Log.d(TAG, "startOhrPPIStreaming on DEVICE_ID " + DEVICE_ID);
+        if (ppiDisposable == null) {
+            Log.d(TAG, "startOhrPPIStreaming ppiDisposable");
+            ppiDisposable = api.startOhrPPIStreaming(DEVICE_ID).observeOn(AndroidSchedulers.mainThread()).subscribe(
+                    new Consumer<PolarOhrPPIData>() {
+                        @Override
+                        public void accept(PolarOhrPPIData ppiData) throws Exception {
+                            for (PolarOhrPPIData.PolarOhrPPISample sample : ppiData.samples) {
+                                Log.d(TAG, "ppi: " + sample.ppi
+                                        + " hr: " + sample.hr
+                                        + " skinContactStatus: " + sample.skinContactStatus
+                                        + " skinContactSupported : " + sample.skinContactSupported
+                                        + " blocker: " + sample.blockerBit + " errorEstimate: " + sample.errorEstimate);
+                            }
+
+                            try {
+                                // Java Objects to JSON
+                                Gson gson = new Gson();
+
+                                String retJSONString = gson.toJson(ppiData);
+                                Log.e(TAG, "retJSONString = " + retJSONString);
+
+                                JSONObject retTmp = new JSONObject(retJSONString);
+                                Log.e(TAG, "retTmp = " + retTmp.toString());
+
+                                JSObject ret = JSObject.fromJSONObject(retTmp);
+                                Log.e(TAG, "ret = " + ret.toString());
+
+                                notifyListeners("OhrPPIStreamEvent", ret);
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                                Log.d(TAG, "JSONException =" + e.getLocalizedMessage());
+                            }
+                        }
+                    },
+                    new Consumer<Throwable>() {
+                        @Override
+                        public void accept(Throwable throwable) throws Exception {
+                            Log.e(TAG, "startOhrPPIStreaming - " + throwable);
+                        }
+                    },
+                    new Action() {
+                        @Override
+                        public void run() throws Exception {
+                            Log.d(TAG, "startOhrPPIStreaming - complete");
+                        }
+                    }
+            );
+        } else {
+            Log.d(TAG, "startOhrPPIStreaming - dispose not null");
+            ppiDisposable.dispose();
+            ppiDisposable = null;
+        }
     }
 
 }
