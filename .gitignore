@@ -1,11 +1,18 @@
+
+# IntelliJ
+*.iml
 .idea
+
 node_modules
 dist
 .DS_Store
 *.tgz
 
+# Gradle files
 /android/build
 
+# Local configuration file (sdk path, etc)
 /android/local.properties
-/android/android.iml
-/android/capacitor-plugin-polar.iml
+
+# Log Files
+*.log
