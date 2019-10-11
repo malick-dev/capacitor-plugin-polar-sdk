@@ -1,4 +1,6 @@
 #import <UIKit/UIKit.h>
+#import <PolarBleSdk/PolarBleSdk-Swift.h>
+#import <RxSwift/RxSwift-Swift.h>
 
 //! Project version number for Plugin.
 FOUNDATION_EXPORT double PluginVersionNumber;
