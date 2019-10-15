@@ -4,16 +4,24 @@ declare module "@capacitor/core" {
   }
 }
 
+/**
+ * The Capacitor polar plugin allows you to interact with polar device
+ *
+ * Use to:
+ * - connect to polar device with device_id
+ * - receive polar data from device
+ *
+ */
 export interface CapacitorPluginPolarPlugin {
 
   /**
-   * Defautlt echo plugin method demo - Return the given value string
-   */
-  echo(options: { value: string }): Promise<{value: string}>;
-
-  /**
-   * Custom plugin method for polar connect - Return the given value string
+   * Connect to polar device
    */
   connect(options: { deviceId: string }): Promise<{value: string}>;
+
+  /**
+   * Disconnect to polar device
+   */
+  disconnect(options: { deviceId: string }): Promise<{value: string}>;
 
 }

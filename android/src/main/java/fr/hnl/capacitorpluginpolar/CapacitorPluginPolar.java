@@ -2,6 +2,7 @@ package fr.hnl.capacitorpluginpolar;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.util.Log;
 
 import com.getcapacitor.JSObject;
@@ -11,7 +12,6 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.google.gson.Gson;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -33,10 +33,14 @@ import polar.com.sdk.api.model.PolarOhrPPIData;
         permissions = {
                 Manifest.permission.BLUETOOTH,
                 Manifest.permission.BLUETOOTH_ADMIN,
-                Manifest.permission.ACCESS_COARSE_LOCATION
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.ACCESS_FINE_LOCATION
         }
 )
 public class CapacitorPluginPolar extends Plugin {
+
+    private static final int REQUEST_ENABLE_BT = 420;
+    private static final String PERMISSION_DENIED_ERROR = "Unable to access Bluetooth, user denied permission request";
 
     private final static String TAG = CapacitorPluginPolar.class.getSimpleName() + "HNL Polar ->";
 
@@ -46,32 +50,36 @@ public class CapacitorPluginPolar extends Plugin {
     Disposable ppgDisposable;
     Disposable ppiDisposable;
 
-    /**
-     * Polar device's id
-     */
-    private String DEVICE_ID;
-
-    @PluginMethod()
-    public void echo(PluginCall call) {
-        String value = call.getString("value");
-
-        JSObject ret = new JSObject();
-        ret.put("value", value);
-        call.success(ret);
-    }
-
     @PluginMethod()
     public void connect(PluginCall call) {
-        DEVICE_ID = call.getString("deviceId");
+        final String deviceId = call.getString("deviceId");
 
-        Log.d(TAG, "DEVICE_ID: " + DEVICE_ID);
+        /* Polar device's id */
+
+        if (!call.getData().has("deviceId")) {
+            call.reject("Must provide deviceId");
+            return;
+        } else {
+            Log.i(TAG, "Request connection to DEVICE_ID: " + deviceId);
+        }
+
+        /* PERMISSIONS */
+        // Check if all the required permissions has been granted
+        // @see https://capacitor.ionicframework.com/docs/plugins/android#permissions
+        if (!hasRequiredPermissions()) {
+                        Log.d(TAG, "Not permitted. Asking permission...");
+            //            saveCall(call);
+            //            pluginRequestAllPermissions();
+        } else {
+            Log.d(TAG, "BT permission OK");
+        }
 
         Context ctx = this.getActivity().getApplicationContext();
 
+        /* API IMPLEMENTATION */
+
         // Load the default api implementation and add callback.
         try {
-
-            // Notice PolarBleApi.ALL_FEATURES are enabled
             api = PolarBleApiDefaultImpl.defaultImplementation(ctx, PolarBleApi.ALL_FEATURES);
             api.setPolarFilter(false);
 
@@ -84,7 +92,7 @@ public class CapacitorPluginPolar extends Plugin {
 
             Log.d(TAG, "version: " + PolarBleApiDefaultImpl.versionInfo());
 
-            setPolarApiCallBack();
+            setPolarApiCallBack(deviceId);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -92,20 +100,24 @@ public class CapacitorPluginPolar extends Plugin {
         }
 
         /* CONNECT */
+
         try {
-            api.connectToDevice(DEVICE_ID);
+            api.connectToDevice(deviceId);
         } catch (PolarInvalidArgument a) {
             a.printStackTrace();
             call.reject(a.getLocalizedMessage(), a);
         }
 
+        /* RESULT */
+
         JSObject ret = new JSObject();
-        ret.put("value", DEVICE_ID);
+        ret.put("value", deviceId);
         call.success(ret);
     }
 
 
-    private void setPolarApiCallBack() {
+    @SuppressWarnings("MissingPermission")
+    private void setPolarApiCallBack(final String deviceId) {
         api.setApiCallback(new PolarBleApiCallback() {
             @Override
             public void blePowerStateChanged(boolean powered) {
@@ -119,7 +131,6 @@ public class CapacitorPluginPolar extends Plugin {
             @Override
             public void deviceConnected(PolarDeviceInfo polarDeviceInfo) {
                 Log.d(TAG, "CONNECTED: " + polarDeviceInfo.deviceId);
-                DEVICE_ID = polarDeviceInfo.deviceId;
 
                 JSObject ret = new JSObject();
                 ret.put("value", "CONNECTED");
@@ -129,7 +140,6 @@ public class CapacitorPluginPolar extends Plugin {
             @Override
             public void deviceConnecting(PolarDeviceInfo polarDeviceInfo) {
                 Log.d(TAG, "CONNECTING: " + polarDeviceInfo.deviceId);
-                DEVICE_ID = polarDeviceInfo.deviceId;
 
                 JSObject ret = new JSObject();
                 ret.put("value", "CONNECTING");
@@ -173,7 +183,7 @@ public class CapacitorPluginPolar extends Plugin {
             public void ppiFeatureReady(String identifier) {
                 Log.d(TAG, "PPI READY: " + identifier);
                 // ohr ppi can be started
-                startOhrPPIStreaming();
+                startOhrPPIStreaming(deviceId);
             }
 
             @Override
@@ -202,27 +212,22 @@ public class CapacitorPluginPolar extends Plugin {
 
             @Override
             public void hrNotificationReceived(String identifier, PolarHrData data) {
-                Log.d(TAG, "HR value: " + data.hr + " rrsMs: " + data.rrsMs + " rr: " + data.rrs + " contact: " + data.contactStatus + "," + data.contactStatusSupported);
+                Log.i(TAG, "HR value: " + data.hr + " rrsMs: " + data.rrsMs + " rr: " + data.rrs + " contact: " + data.contactStatus + "," + data.contactStatusSupported);
 
-                // Java Objects to JSON
-                Gson gson = new Gson();
-
-                String jsonStr = gson.toJson(data);
-                Log.e(TAG, "retJSONString = " + jsonStr);
-
-                JSONObject jsonObject = null;
                 try {
-                    jsonObject = new JSONObject(jsonStr);
+                    // Java Objects to JSON
+                    // TODO export to generic method
+                    Gson gson = new Gson();
 
-                    Log.e(TAG, "retTmp = " + jsonObject.toString());
+                    String jsonStr = gson.toJson(data);
+                    Log.d(TAG, "retJSONString = " + jsonStr);
+
+                    JSONObject jsonObject = new JSONObject(jsonStr);
+                    Log.d(TAG, "jsonObject = " + jsonObject.toString());
 
                     JSObject ret = JSObject.fromJSONObject(jsonObject);
-                    Log.e(TAG, "ret = " + ret.toString());
+                    Log.d(TAG, "ret = " + ret.toString());
 
-//                JSObject ret = new JSObject();
-//                ret.put("hr", data.hr);
-//                ret.put("contactStatus", data.contactStatus);
-//                ret.put("contactStatusSupported", data.contactStatusSupported);
                     notifyListeners("hrNotificationReceived", ret);
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -232,16 +237,17 @@ public class CapacitorPluginPolar extends Plugin {
 
             @Override
             public void polarFtpFeatureReady(String s) {
-                Log.d(TAG, "FTP ready");
+                Log.d(TAG, "FTP ready = " + s);
             }
         });
     }
 
-    private void startOhrPPIStreaming() {
-        Log.d(TAG, "startOhrPPIStreaming on DEVICE_ID " + DEVICE_ID);
+    //@SuppressWarnings("MissingPermission")
+    private void startOhrPPIStreaming(String deviceId) {
+        Log.d(TAG, "startOhrPPIStreaming on DEVICE_ID " + deviceId);
         if (ppiDisposable == null) {
             Log.d(TAG, "startOhrPPIStreaming ppiDisposable");
-            ppiDisposable = api.startOhrPPIStreaming(DEVICE_ID).observeOn(AndroidSchedulers.mainThread()).subscribe(
+            ppiDisposable = api.startOhrPPIStreaming(deviceId).observeOn(AndroidSchedulers.mainThread()).subscribe(
                     new Consumer<PolarOhrPPIData>() {
                         @Override
                         public void accept(PolarOhrPPIData ppiData) throws Exception {
@@ -258,10 +264,10 @@ public class CapacitorPluginPolar extends Plugin {
                                 Gson gson = new Gson();
 
                                 String retJSONString = gson.toJson(ppiData);
-                                Log.e(TAG, "retJSONString = " + retJSONString);
+                                Log.d(TAG, "retJSONString = " + retJSONString);
 
                                 JSONObject retTmp = new JSONObject(retJSONString);
-                                Log.e(TAG, "retTmp = " + retTmp.toString());
+                                Log.d(TAG, "retTmp = " + retTmp.toString());
 
                                 JSObject ret = JSObject.fromJSONObject(retTmp);
                                 Log.e(TAG, "ret = " + ret.toString());
@@ -286,10 +292,81 @@ public class CapacitorPluginPolar extends Plugin {
                         }
                     }
             );
+            Log.d(TAG, "startOhrPPIStreaming - init ppiDisposable");
+            Log.d(TAG, ppiDisposable.toString());
         } else {
             Log.d(TAG, "startOhrPPIStreaming - dispose not null");
             ppiDisposable.dispose();
             ppiDisposable = null;
+        }
+    }
+
+    @PluginMethod()
+    public void disconnect(PluginCall call) {
+        String deviceId = call.getString("deviceId");
+
+        // TODO check connection state before trigger deconnect
+
+        Log.i(TAG, "disconnecting From Device.... " + deviceId);
+        try {
+            api.disconnectFromDevice(deviceId);
+            Log.d(TAG, "disconnected From Device " + deviceId);
+
+            /* RESULT */
+
+            JSObject ret = new JSObject();
+            ret.put("value", deviceId);
+            call.success(ret);
+
+        } catch (PolarInvalidArgument polarInvalidArgument) {
+            polarInvalidArgument.printStackTrace();
+            call.reject(polarInvalidArgument.getLocalizedMessage(), polarInvalidArgument);
+        }
+    }
+
+    /**
+     * @see https://capacitor.ionicframework.com/docs/plugins/android#permissions
+     */
+    @Override
+    protected void handleRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.handleRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        Log.i(TAG, "handling request perms result");
+
+        PluginCall savedCall = getSavedCall();
+        if (savedCall == null) {
+            Log.i(TAG, "No stored plugin call for permissions request result");
+            return;
+        }
+
+        for (int result : grantResults) {
+            Log.i(TAG, "grantResults result : " + result);
+            if (result == PackageManager.PERMISSION_DENIED) {
+                savedCall.error("User denied permission");
+                return;
+            }
+        }
+
+
+        for (int i = 0; i < grantResults.length; i++) {
+            int result = grantResults[i];
+            String perm = permissions[i];
+            Log.i(TAG, "grantResults result : " + result);
+            if (result == PackageManager.PERMISSION_DENIED) {
+                Log.d(getLogTag(), "User denied permission: " + perm);
+                savedCall.error(PERMISSION_DENIED_ERROR);
+                return;
+            }
+        }
+
+        if (requestCode == REQUEST_ENABLE_BT) {
+            Log.i(TAG, "We got the permission to ");
+            // TODO
+        }
+
+        if (savedCall.getMethodName().equals("connect")) {
+            Log.i(TAG, "savedCall after permission permission = connect");
+            connect(savedCall);
         }
     }
 
