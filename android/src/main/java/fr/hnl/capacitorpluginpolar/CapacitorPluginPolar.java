@@ -309,8 +309,10 @@ public class CapacitorPluginPolar extends Plugin {
 
         Log.i(TAG, "disconnecting From Device.... " + deviceId);
         try {
-            api.disconnectFromDevice(deviceId);
-            Log.d(TAG, "disconnected From Device " + deviceId);
+            if (api != null) {
+                api.disconnectFromDevice(deviceId);
+                Log.d(TAG, "disconnected From Device " + deviceId);
+            }
 
             /* RESULT */
 

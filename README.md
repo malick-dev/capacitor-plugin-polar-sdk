@@ -19,6 +19,40 @@ npx cap open android
 
 npx cap sync android
 
+## TASK LIST
+
+DEMO APP
+* [x] test polar sdk android sample
+* [x] set up ionic test app
+* [ ] test all plugin scenario with test app
+* [ ] update view when event trigger
+
+PLUGIN 
+-[x] create plugin
+-[ ] publish plugin in npm registry
+
+PLUGIN - ANDROID
+* [ ] polar connect
+    -[x] hr
+    -[ ] ppi
+* [ ] polar disconnect
+* [ ] bluetooth permissions
+* [ ] trigger generic event name
+* [ ] error exception handling
+    - [ ] when device not enabled
+    - [ ] when disconnection happened
+    - [ ] when connection error
+
+PLUGIN - IOS
+* [ ] polar connect
+    -[ ] hr
+    -[ ] ppi
+* [ ] polar disconnect
+* [ ] trigger generic event name
+* [ ] error exception handling
+    - [ ] when disconnection happened
+    - [ ] when connection error
+
 ## links
 
 * https://capacitor.ionicframework.com/docs/plugins
